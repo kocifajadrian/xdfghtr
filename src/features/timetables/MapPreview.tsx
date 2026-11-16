@@ -12,8 +12,8 @@ type MapLibre = typeof import('maplibre-gl')
 // Our own map styles (public/map): OpenFreeMap's Positron recoloured in the Sage theme, a light and a dark one (the dark
 // one on pure black). The tiles come from OpenFreeMap (free, no key). Edit the files in Maputnik. The style follows
 // the light / dark theme.
-const STYLE_LIGHT = '/map/ubian-light.json'
-const STYLE_DARK = '/map/ubian-dark.json'
+const STYLE_LIGHT = `${import.meta.env.BASE_URL}map/ubian-light.json`
+const STYLE_DARK = `${import.meta.env.BASE_URL}map/ubian-dark.json`
 const styleUrl = (dark: boolean) => new URL(dark ? STYLE_DARK : STYLE_LIGHT, window.location.origin).href
 
 const SLOVAKIA: [number, number] = [19.5, 48.7]
