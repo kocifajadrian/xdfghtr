@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -109,7 +109,7 @@ describe('whole app', () => {
 
     expect(await screen.findByText(/worry-free/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Timetables' })).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Timetables' })).toBeInTheDocument()
 
     await ui.click(screen.getAllByRole('button', { name: 'Sign in' })[0])
     expect(await screen.findByRole('dialog')).toHaveTextContent('Welcome back')

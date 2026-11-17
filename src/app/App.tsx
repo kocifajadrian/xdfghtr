@@ -1,4 +1,5 @@
 import { BrowserRouter } from 'react-router-dom'
+import { DevicePreview } from '@/components/layout/DevicePreview'
 import { ErrorBoundary } from './ErrorBoundary'
 import { AppProviders } from './providers'
 import { AppRoutes } from './routes'
@@ -9,6 +10,7 @@ export default function App() {
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <AppProviders>
           <AppRoutes />
+          <DevicePreview />
         </AppProviders>
       </BrowserRouter>
     </ErrorBoundary>

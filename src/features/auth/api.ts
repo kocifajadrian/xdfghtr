@@ -7,7 +7,8 @@ import { env } from '@/config/env'
 import type { MessageKey } from '@/i18n'
 import { ApiError, http } from '@/lib/http'
 
-export type User = { email: string; name: string }
+/** `emailVerified` missing means verified (older stored sessions and real APIs that do not send it yet). */
+export type User = { email: string; name: string; emailVerified?: boolean }
 
 /** Wrong e-mail or password. Carries the key of the text to show, so the form can translate it. */
 export class AuthError extends Error {
@@ -22,7 +23,11 @@ export class AuthError extends Error {
 export const DEMO_ACCOUNT = { email: 'adrian.kocifaj@gmail.com', password: 'demo1234', name: 'Adrian' }
 
 /** Who the demo is signed in as when it opens (see env.demoSignedIn). A made-up address, so a shared demo shows no real one. */
-export const DEMO_USER: User = { email: 'adrian.kocifaj@example.com', name: 'Adrián Kocifaj' }
+export const DEMO_USER: User = {
+  email: 'adrian.kocifaj@example.com',
+  name: 'Adrián Kocifaj',
+  emailVerified: false,
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

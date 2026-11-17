@@ -1,164 +1,36 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
 import { EDGES, MAP_HEIGHT, MAP_WIDTH, REGION_PATHS, TOWNS } from './slovakia-data'
 
 /**
  * Hero background: a custom SVG map of Slovakia with a web of train and bus links between towns.
- * The loop starts zoomed in: the camera dives to Bratislava and follows one trip (Bratislava, Trnava, Trenčín, Žilina,
- * Poprad, Košice), then pulls back and the web grows out of Žilina like a wave: a link starts drawing when the first trip
+ * The regions are softly filled. The web grows out of Žilina like a wave, slowly: a link starts drawing when the wave
  * reaches one of its towns, and every town lights up on arrival. When two growing links meet, both stop where they meet,
- * so the result is one seamless web. Then it fades and starts again.
- * Pure SVG (SMIL animations), no map library or network requests. With reduced motion the whole thing, camera included,
- * plays once and stays.
+ * so the result is one seamless web. It stays for a while, then fades and starts again.
+ * Pure SVG (SMIL animations), no map library or network requests. With reduced motion it plays once and stays.
+ * An older version with a camera that dives in and follows one trip, faster and slower timings, running dots and rings
+ * is kept in backups/SlovakiaMap.motions.tsx.
  */
 
 // One solid colour for the outline, routes and dots: the map colour (--map in index.css), which is the same as its
 // buttons. It is NOT drawn see-through, so where lines and dots cross the colour is the same everywhere.
 const COLOR = 'var(--map)'
-const SPEED = 180 // map units per second
-// A piece waiting for its trip is pushed a hair into the gap, so its round line end is not drawn as a speck.
+const WIDTH = 3 // width of the routes and the outline
+const DOT = 5.5 // radius of a town dot
+const SPEED = 100 // map units per second
+// A piece waiting for its wave is pushed a hair into the gap, so its round line end is not drawn as a speck.
 const HIDDEN = 0.01
-const PAUSE = 3.5 // seconds the finished web stays on screen
+const START = 0.6 // seconds before the wave leaves the source
+const PAUSE = 7 // seconds the finished web stays on screen
 const SOURCE = 0 // Žilina
 // Only these towns show their name; every town still gets a dot. Empty = dots only.
 const LABELLED = new Set(['Žilina', 'Bratislava', 'Trnava', 'Trenčín', 'Poprad', 'Košice', 'Banská Bystrica'])
 
-// ---- Opening tour ------------------------------------------------------------------------------------------------
-// The loop starts zoomed in: the camera dives to Bratislava and follows one trip across the country, then pulls back
-// and the web of all links grows as before. To go back to the old look (no zoom), restore backups/SlovakiaMap.classic.tsx.
-const TOUR = [1, 2, 5, 0, 10, 12] // Bratislava, Trnava, Trenčín, Žilina, Poprad, Košice (indexes into TOWNS)
-const TOUR_SPEED = 110 // map units per second while the camera follows the trip
-const ZOOM = 2.2 // how far the camera is zoomed in on the trip
-const ZOOM_IN = 1.6 // seconds the camera takes to dive from the whole map to Bratislava
-const ZOOM_OUT = 2.4 // seconds the camera takes to pull back to the whole map
 const PAD = 40 // room around the whole map, so the outline is not cut off or faded at the edge
-type View = { x: number; y: number; w: number; h: number }
-const FULL: View = {
-  x: -PAD,
-  y: (-PAD * MAP_HEIGHT) / MAP_WIDTH,
-  w: MAP_WIDTH + 2 * PAD,
-  h: ((MAP_WIDTH + 2 * PAD) * MAP_HEIGHT) / MAP_WIDTH,
-}
+const VIEW_W = MAP_WIDTH + 2 * PAD
+const VIEW_H = (VIEW_W * MAP_HEIGHT) / MAP_WIDTH
+const VIEW_BOX = `${-PAD} ${((-PAD * MAP_HEIGHT) / MAP_WIDTH).toFixed(1)} ${VIEW_W} ${VIEW_H.toFixed(1)}`
 
-/** The quickest way over the links from one town to another: each link, and whether it is walked from a to b. */
-function shortestRoute(from: number, to: number) {
-  const dist = TOWNS.map((_, i) => (i === from ? 0 : Infinity))
-  const via: ({ edge: number; forward: boolean; prev: number } | undefined)[] = TOWNS.map(() => undefined)
-  const done = new Set<number>()
-  for (;;) {
-    let u = -1
-    dist.forEach((d, i) => {
-      if (!done.has(i) && d !== Infinity && (u === -1 || d < dist[u]!)) u = i
-    })
-    if (u === -1 || u === to) break
-    done.add(u)
-    EDGES.forEach((e, k) => {
-      if (e.a !== u && e.b !== u) return
-      const forward = e.a === u
-      const v = forward ? e.b : e.a
-      if (dist[u]! + e.length < dist[v]!) {
-        dist[v] = dist[u]! + e.length
-        via[v] = { edge: k, forward, prev: u }
-      }
-    })
-  }
-  const steps: { edge: number; forward: boolean }[] = []
-  for (let at = to; at !== from;) {
-    const step = via[at]!
-    steps.unshift({ edge: step.edge, forward: step.forward })
-    at = step.prev
-  }
-  return steps
-}
-
-// The trip as one long line: its points, and how far along it each town is reached.
-const tourPoints: [number, number][] = [[TOWNS[TOUR[0]!]!.x, TOWNS[TOUR[0]!]!.y]]
-const tourDistance: number[] = [0] // distance along the line at each point
-const tourReached = new Map<number, number>([[TOUR[0]!, 0]]) // town -> distance along the line when reached
-for (let k = 1; k < TOUR.length; k++) {
-  for (const step of shortestRoute(TOUR[k - 1]!, TOUR[k]!)) {
-    const edge = EDGES[step.edge]!
-    const n = edge.path.match(/-?\d+(?:\.\d+)?/g)!.map(Number)
-    const points: [number, number][] = []
-    for (let i = 0; i < n.length; i += 2) points.push([n[i]!, n[i + 1]!])
-    if (!step.forward) points.reverse()
-    for (const p of points.slice(1)) {
-      const last = tourPoints[tourPoints.length - 1]!
-      tourPoints.push(p)
-      tourDistance.push(tourDistance[tourDistance.length - 1]! + Math.hypot(p[0] - last[0], p[1] - last[1]))
-    }
-    const end = step.forward ? edge.b : edge.a
-    if (!tourReached.has(end)) tourReached.set(end, tourDistance[tourDistance.length - 1]!)
-  }
-}
-const tourLength = tourDistance[tourDistance.length - 1]!
-const TOUR_TIME = tourLength / TOUR_SPEED
-const tourPath = `M${tourPoints.map((p) => `${p[0]} ${p[1]}`).join('L')}`
-/** The moment the whole web starts: after the camera has pulled back. */
-const START = ZOOM_IN + TOUR_TIME + ZOOM_OUT + 0.4
-
-/** Where the head of the trip is, `s` map units along the line. */
-function tourHead(s: number): [number, number] {
-  const d = Math.min(Math.max(s, 0), tourLength)
-  let i = 1
-  while (i < tourDistance.length - 1 && tourDistance[i]! < d) i++
-  const from = tourPoints[i - 1]!
-  const to = tourPoints[i]!
-  const span = tourDistance[i]! - tourDistance[i - 1]! || 1
-  const t = (d - tourDistance[i - 1]!) / span
-  return [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t]
-}
-
-/** The camera frame centred on a point, kept inside the map. */
-function frameAround(cx: number, cy: number): View {
-  const w = MAP_WIDTH / ZOOM
-  const h = MAP_HEIGHT / ZOOM
-  return {
-    x: Math.min(Math.max(cx - w / 2, FULL.x), FULL.x + FULL.w - w),
-    y: Math.min(Math.max(cy - h / 2, FULL.y), FULL.y + FULL.h - h),
-    w,
-    h,
-  }
-}
-
-/** The camera follows the head of the trip, a little behind and ahead, so it glides instead of jerking at corners. */
-function followHead(s: number): View {
-  let x = 0
-  let y = 0
-  const offsets = [-120, -80, -40, 0, 40, 80, 120]
-  for (const o of offsets) {
-    const [px, py] = tourHead(s + o)
-    x += px
-    y += py
-  }
-  return frameAround(x / offsets.length, y / offsets.length)
-}
-
-const ease = (t: number) => t * t * (3 - 2 * t)
-const mix = (a: View, b: View, t: number): View => ({
-  x: a.x + (b.x - a.x) * t,
-  y: a.y + (b.y - a.y) * t,
-  w: a.w + (b.w - a.w) * t,
-  h: a.h + (b.h - a.h) * t,
-})
-
-// The camera: whole map, dive in to Bratislava, follow the trip, pull back out to the whole map.
-const cameraKeys: { t: number; view: View }[] = [{ t: 0, view: FULL }]
-{
-  const start = followHead(0)
-  for (let i = 1; i <= 8; i++) cameraKeys.push({ t: (ZOOM_IN * i) / 8, view: mix(FULL, start, ease(i / 8)) })
-  for (let t = 0.25; t < TOUR_TIME; t += 0.25) {
-    cameraKeys.push({ t: ZOOM_IN + t, view: followHead(t * TOUR_SPEED) })
-  }
-  const end = followHead(tourLength)
-  cameraKeys.push({ t: ZOOM_IN + TOUR_TIME, view: end })
-  for (let i = 1; i <= 8; i++) {
-    cameraKeys.push({ t: ZOOM_IN + TOUR_TIME + (ZOOM_OUT * i) / 8, view: mix(end, FULL, ease(i / 8)) })
-  }
-}
-const viewText = (v: View) => `${v.x.toFixed(1)} ${v.y.toFixed(1)} ${v.w.toFixed(1)} ${v.h.toFixed(1)}`
-
-// While the camera is zoomed in, the edges of the picture fade out instead of ending in a hard line.
+// The edges of the picture fade out instead of ending in a hard line.
 const EDGE_FADE: CSSProperties = {
   maskImage:
     'linear-gradient(to right, transparent, black 6%, black 94%, transparent), linear-gradient(to bottom, transparent, black 6%, black 94%, transparent)',
@@ -166,6 +38,13 @@ const EDGE_FADE: CSSProperties = {
   WebkitMaskImage:
     'linear-gradient(to right, transparent, black 6%, black 94%, transparent), linear-gradient(to bottom, transparent, black 6%, black 94%, transparent)',
   WebkitMaskComposite: 'source-in',
+}
+
+// The light along the shape of the country: a close glow and two wider, softer ones that reach out into the empty space,
+// all in the map colour. It sits on a wrapper around the svg, not on the svg itself, so the svg's edge does not cut it off.
+const glow = (pct: number) => `color-mix(in oklab, var(--map) ${pct}%, transparent)`
+const OUTLINE_GLOW: CSSProperties = {
+  filter: `drop-shadow(0 0 6px ${glow(50)}) drop-shadow(0 0 22px ${glow(24)}) drop-shadow(0 0 50px ${glow(10)})`,
 }
 
 // 1. When each town is first reached: the shortest travel time from the source over the links (Dijkstra).
@@ -317,102 +196,78 @@ export function SlovakiaMap({ className }: { className?: string }) {
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   )
   const loop = { repeatCount: once ? 1 : 'indefinite', fill: 'freeze' } as const
+  const fadeOut = !once && (
+    <animate
+      attributeName="opacity"
+      dur={`${CYCLE}s`}
+      repeatCount="indefinite"
+      values="1;1;0"
+      keyTimes={`0;${FADE};1`}
+    />
+  )
 
   return (
-    <svg
-      viewBox={viewText(FULL)}
-      className={cn('overflow-hidden', className)}
-      style={EDGE_FADE}
-      aria-hidden="true"
-    >
-      {/* The camera: the visible part of the map changes over time (zoom in, follow the trip, zoom out). Visitors who ask
-          for less motion get it once, not in a loop. */}
-      <animate
-        attributeName="viewBox"
-        dur={`${CYCLE}s`}
-        {...loop}
-        values={[...cameraKeys.map((k) => viewText(k.view)), viewText(FULL)].join(';')}
-        keyTimes={[...cameraKeys.map((k) => frac(k.t)), 1].join(';')}
-      />
-
-      {/* Outline: only the border of the whole country, drawn like the routes (same solid colour and width), so the
-          routes and the outline together make the shape of Slovakia. The borders between regions are not drawn. */}
-      <g fill="none" stroke={COLOR} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
-        <path d={COUNTRY_OUTLINE} />
-      </g>
-
-      {/* The tour: the one trip the camera follows, drawn as it goes. */}
-      <g fill="none" stroke={COLOR} strokeLinejoin="round" strokeLinecap="round">
-        <path d={tourPath} pathLength={1} strokeDasharray="1 2" strokeDashoffset={1 + HIDDEN} strokeWidth="4">
-          <animate
-            attributeName="stroke-dashoffset"
-            dur={`${CYCLE}s`}
-            {...loop}
-            values={`${1 + HIDDEN};${1 + HIDDEN};0;0`}
-            keyTimes={`0;${frac(ZOOM_IN)};${frac(ZOOM_IN + TOUR_TIME)};1`}
-          />
-          {!once && (
-            <animate
-              attributeName="opacity"
-              dur={`${CYCLE}s`}
-              repeatCount="indefinite"
-              values="1;1;0"
-              keyTimes={`0;${FADE};1`}
+    <div className={className} style={OUTLINE_GLOW} aria-hidden="true">
+      <svg viewBox={VIEW_BOX} className="block w-full overflow-hidden" style={EDGE_FADE}>
+        {/* The regions, each softly filled in a slightly different strength, with thin borders. */}
+        <g strokeLinejoin="round">
+          {REGION_PATHS.map((d, i) => (
+            <path
+              key={i}
+              d={d}
+              fill={COLOR}
+              fillOpacity={0.05 + (i % 3) * 0.04}
+              stroke={COLOR}
+              strokeOpacity="0.3"
+              strokeWidth="1.4"
             />
-          )}
-        </path>
-      </g>
-
-      {/* The web: solid lines that grow along the links. */}
-      <g fill="none" stroke={COLOR} strokeLinejoin="round" strokeLinecap="round">
-        {pieces.map((piece, i) => (
-          <path
-            key={i}
-            d={piece.d}
-            pathLength={1}
-            strokeDasharray={`${piece.share} 2`}
-            strokeDashoffset={piece.share + HIDDEN}
-            strokeWidth="4"
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              dur={`${CYCLE}s`}
-              {...loop}
-              values={`${piece.share + HIDDEN};${piece.share + HIDDEN};0;0`}
-              keyTimes={`0;${frac(piece.start)};${frac(piece.end)};1`}
-            />
-            {!once && (
-              <animate
-                attributeName="opacity"
-                dur={`${CYCLE}s`}
-                repeatCount="indefinite"
-                values="1;1;0"
-                keyTimes={`0;${FADE};1`}
-              />
-            )}
-          </path>
-        ))}
-      </g>
-
-      {/* Towns: a dot appears when the first trip arrives (nothing before that), with the name next to it for the towns in LABELLED (names only on wide screens). */}
-      {TOWNS.map((town, i) => (
-        <g key={town.name} transform={`translate(${town.x} ${town.y})`}>
-          <From
-            at={Math.min(
-              arrival[i]!,
-              tourReached.has(i) ? ZOOM_IN + tourReached.get(i)! / TOUR_SPEED : Infinity,
-            )}
-            once={once}
-          >
-            <circle r="6.5" fill={COLOR} />
-            {LABELLED.has(town.name) && (
-              <text x="10" y="4.8" fontSize="14" className="fill-foreground/70 hidden md:block">
-                {town.name}
-              </text>
-            )}
-          </From>
+          ))}
         </g>
-      ))}
-    </svg>
+
+        {/* Outline: only the border of the whole country, drawn like the routes (same solid colour and width), so the
+          routes and the outline together make the shape of Slovakia. */}
+        <g fill="none" stroke={COLOR} strokeWidth={WIDTH} strokeLinejoin="round" strokeLinecap="round">
+          <path d={COUNTRY_OUTLINE} />
+        </g>
+
+        {/* The web: solid lines that grow along the links. */}
+        <g fill="none" stroke={COLOR} strokeLinejoin="round" strokeLinecap="round">
+          {pieces.map((piece, i) => (
+            <path
+              key={i}
+              d={piece.d}
+              pathLength={1}
+              strokeDasharray={`${piece.share} 2`}
+              strokeDashoffset={piece.share + HIDDEN}
+              strokeWidth={WIDTH}
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                dur={`${CYCLE}s`}
+                {...loop}
+                values={`${piece.share + HIDDEN};${piece.share + HIDDEN};0;0`}
+                keyTimes={`0;${frac(piece.start)};${frac(piece.end)};1`}
+              />
+              {fadeOut}
+            </path>
+          ))}
+        </g>
+
+        {/* Towns: a dot appears when the wave arrives (nothing before that), with the name next to it for the towns in
+          LABELLED (names only on wide screens). */}
+        {TOWNS.map((town, i) => (
+          <g key={town.name} transform={`translate(${town.x} ${town.y})`}>
+            <From at={arrival[i]!} once={once}>
+              <circle r={DOT} fill={COLOR} />
+              {LABELLED.has(town.name) && (
+                <text x={DOT + 4} y="4.8" fontSize="14" className="fill-foreground/70 hidden md:block">
+                  {town.name}
+                </text>
+              )}
+            </From>
+          </g>
+        ))}
+      </svg>
+    </div>
   )
 }

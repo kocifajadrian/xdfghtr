@@ -12,7 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { Wordmark } from '@/components/brand/Wordmark'
+import { Logo } from '@/components/brand/Logo'
 import { NAV_ITEMS, ROUTES, isNavGroup, type NavLinkItem } from '@/config/navigation'
 import { useAuth, useLoginDialog } from '@/features/auth'
 import { useI18n } from '@/i18n'
@@ -37,10 +37,9 @@ function MobileNavLink({
       to={link.to}
       onClick={(e) => onChoose(e, link)}
       aria-current={active ? 'page' : undefined}
-      aria-label={link.to === ROUTES.home ? t(link.labelKey) : undefined}
       className={cn(linkClass, active && 'bg-accent font-medium', className)}
     >
-      {link.to === ROUTES.home ? <Wordmark className="text-base" /> : t(link.labelKey)}
+      {t(link.labelKey)}
     </Link>
   )
 }
@@ -86,12 +85,21 @@ export function MobileNav() {
           <span className="sr-only">{t('mobileNav.open')}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{t('mobileNav.title')}</SheetTitle>
+      <SheetContent side="left" showCloseButton={false} className="w-72 overflow-y-auto">
+        {/* Logo centred in the panel's top row. Closing: tap outside, press Escape, or choose a link. The title stays for screen readers. */}
+        <SheetHeader className="relative flex h-24 flex-row items-center justify-center p-0 pt-2">
+          <SheetTitle className="sr-only">{t('mobileNav.title')}</SheetTitle>
           <SheetDescription className="sr-only">{t('mobileNav.description')}</SheetDescription>
+          <Link
+            to={ROUTES.home}
+            onClick={() => setOpen(false)}
+            aria-label="ubian"
+            className="rounded-md px-2 py-1"
+          >
+            <Logo className="text-3xl" />
+          </Link>
         </SheetHeader>
-        <nav aria-label={t('mobileNav.title')} className="flex flex-col gap-1 px-4 pb-4">
+        <nav aria-label={t('mobileNav.title')} className="flex flex-col gap-1 px-4 pt-2 pb-4">
           {NAV_ITEMS.map((item) =>
             isNavGroup(item) ? (
               <Collapsible

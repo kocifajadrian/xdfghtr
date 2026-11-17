@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ubian</string>
+    <string name="title_activity_main">Ubian</string>
+    <string name="package_name">sk.ubian.app</string>
+    <string name="custom_url_scheme">sk.ubian.app</string>
+</resources>

@@ -16,7 +16,7 @@ import { useAuth, useLoginDialog } from '@/features/auth'
 import { useI18n } from '@/i18n'
 import { watchSystem } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-import { Wordmark } from '@/components/brand/Wordmark'
+import { Logo } from '@/components/brand/Logo'
 import { AccountMenu } from './AccountMenu'
 import { MobileNav } from './MobileNav'
 import { LanguageButton, ThemeButton } from './PreferenceButtons'
@@ -94,7 +94,7 @@ export function SiteHeader() {
                         aria-label={item.to === ROUTES.home ? t(item.labelKey) : undefined}
                       >
                         {item.to === ROUTES.home ? (
-                          <Wordmark className="relative -top-[1.5px] text-[17px]" />
+                          <Logo className="relative -top-[0.9px] text-[17px]" markClassName="!h-[1.3em] !w-[1.91em]" />
                         ) : (
                           t(item.labelKey)
                         )}

@@ -5,6 +5,8 @@ export type LoginErrors = { email?: MessageKey; password?: MessageKey }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+export const isEmail = (value: string) => EMAIL_RE.test(value.trim())
+
 /** Checks the login form fields. Returns a message key per invalid field (empty object = valid). */
 export function validateLogin(email: string, password: string): LoginErrors {
   const errors: LoginErrors = {}

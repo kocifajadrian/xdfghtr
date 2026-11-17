@@ -39,6 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
-  const value = useMemo(() => ({ user, signIn, signOut }), [user, signIn, signOut])
+  const updateUser = useCallback(
+    (patch: Partial<User>) => {
+      if (!user) return
+      const next = { ...user, ...patch }
+      // Keep it in the storage it came from: "remember me" in localStorage, otherwise the session.
+      let remember = false
+      try {
+        remember = localStorage.getItem(KEY) !== null
+      } catch {
+        /* ignore */
+      }
+      writeStored(next, remember)
+      setUser(next)
+    },
+    [user],
+  )
+
+  const value = useMemo(() => ({ user, signIn, signOut, updateUser }), [user, signIn, signOut, updateUser])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

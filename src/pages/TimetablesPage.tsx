@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -12,17 +13,9 @@ import { ResultsPanel } from '@/features/timetables/ResultsPanel'
 import { SearchForm } from '@/features/timetables/SearchForm'
 import { AiChatPanel } from '@/features/timetables/AiChatPanel'
 import type { ChatMessage } from '@/features/timetables/assistant'
-import { ALL_MODES, type Connection, type SearchQuery } from '@/features/timetables/types'
+import { EMPTY_QUERY, type Connection, type SearchQuery } from '@/features/timetables/types'
 import { useI18n } from '@/i18n'
 import { useMediaQuery } from '@/lib/use-media-query'
-
-const EMPTY_QUERY: SearchQuery = {
-  from: '',
-  to: '',
-  when: 'now',
-  directOnly: false,
-  filter: { modes: ALL_MODES, city: null },
-}
 
 type View = 'search' | 'detail' | 'chat'
 
@@ -43,7 +36,9 @@ export default function TimetablesPage() {
   const isPhone = useMediaQuery('(max-width: 639px)')
   const [view, setView] = useState<View>('search')
   const [snap, setSnap] = useState<number | string | null>(SNAP_FOR_VIEW.search)
-  const [query, setQuery] = useState(EMPTY_QUERY)
+  // The home page can send a whole search: it is filled in and run at once.
+  const sent = (useLocation().state ?? null) as { query?: SearchQuery } | null
+  const [query, setQuery] = useState<SearchQuery>(() => sent?.query ?? EMPTY_QUERY)
   const [loading, setLoading] = useState(false)
   // Whether a search was made, so the results (or "nothing found") are shown under the form.
   const [searched, setSearched] = useState(false)
@@ -59,6 +54,12 @@ export default function TimetablesPage() {
   const [chat, setChat] = useState<ChatMessage[]>([])
   // Only the newest search may update the screen when several are started quickly.
   const searchId = useRef(0)
+
+  useEffect(() => {
+    if (sent?.query) void search(sent.query)
+    // Only once, when the page opens with a search from the home page.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const connections = useMemo(() => {
     const departures = found.map((c) => toMinutes(c.legs[0].stops[0].time))

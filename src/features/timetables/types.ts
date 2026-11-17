@@ -50,3 +50,12 @@ export type SearchQuery = {
   directOnly: boolean
   filter: TransportFilter
 }
+
+/** A search with nothing filled in yet. */
+export const EMPTY_QUERY: SearchQuery = {
+  from: '',
+  to: '',
+  when: 'now',
+  directOnly: false,
+  filter: { modes: ALL_MODES, city: null },
+}

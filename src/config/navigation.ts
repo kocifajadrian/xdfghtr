@@ -10,6 +10,7 @@ export const ROUTES = {
   },
   pass: '/preukaz',
   // Pages in the account menu.
+  profile: '/profil',
   orders: '/objednavky',
   notifications: '/notifikacie',
   greenKm: '/zelene-kilometre',

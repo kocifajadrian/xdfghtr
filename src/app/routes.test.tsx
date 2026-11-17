@@ -78,7 +78,7 @@ describe('menu', () => {
     const user = userEvent.setup()
     renderAt('/')
 
-    await user.click(screen.getByRole('link', { name: 'Cestovné poriadky' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Cestovné poriadky' }))
     expect(await screen.findByRole('heading', { name: 'Cestovné poriadky' })).toBeInTheDocument()
   })
 
@@ -94,7 +94,7 @@ describe('menu', () => {
     const user = userEvent.setup()
     renderAt('/')
 
-    await user.click(screen.getByRole('link', { name: 'Študentské preukazy' }))
+    await user.click(screen.getByRole('link', { name: 'Školské preukazy' }))
     expect(await screen.findByRole('dialog')).toHaveTextContent(LOGIN_REASON)
   })
 })
@@ -111,7 +111,7 @@ describe('mobile menu', () => {
   it('lists the main items', async () => {
     const { panel } = await openPanel()
 
-    for (const name of ['Domov', 'Cestovné poriadky', 'Dopravné karty', 'Študentské preukazy']) {
+    for (const name of ['Domov', 'Cestovné poriadky', 'Dopravné karty', 'Školské preukazy']) {
       expect(within(panel).getByRole('link', { name })).toBeInTheDocument()
     }
   })

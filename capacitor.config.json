@@ -1,0 +1,6 @@
+{
+  "appId": "sk.ubian.app",
+  "appName": "Ubian",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#ffffff" }
+}

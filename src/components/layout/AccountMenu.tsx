@@ -6,7 +6,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -26,11 +25,16 @@ export function AccountMenu({ user, onSignOut }: { user: User; onSignOut: () => 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="flex items-start gap-2 font-normal">
-          <UserIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-          {/* Wraps instead of cutting off, so a very long address can still be read in full. */}
-          <span className="break-all">{user.email}</span>
-        </DropdownMenuLabel>
+        <DropdownMenuItem asChild className="items-start">
+          <Link to={ROUTES.profile}>
+            <UserIcon className="mt-0.5" />
+            <span className="flex min-w-0 flex-col">
+              <span className="font-medium">{t('account.profile')}</span>
+              {/* Wraps instead of cutting off, so a very long address can still be read in full. */}
+              <span className="text-muted-foreground text-xs font-normal break-all">{user.email}</span>
+            </span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
 
         {[

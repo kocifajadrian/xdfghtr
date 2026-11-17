@@ -5,6 +5,7 @@ import { ROUTES } from '@/config/navigation'
 import { RequireAuth } from '@/features/auth'
 import type { MessageKey } from '@/i18n'
 import CardsPage from '@/pages/CardsPage'
+import ProfilePage from '@/pages/ProfilePage'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import OrdersPage from '@/pages/OrdersPage'
@@ -61,6 +62,14 @@ export function AppRoutes() {
         element={
           <RequireAuth fallback={<HomePage />}>
             <OrdersPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path={ROUTES.profile}
+        element={
+          <RequireAuth fallback={<HomePage />}>
+            <ProfilePage />
           </RequireAuth>
         }
       />
