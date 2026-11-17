@@ -94,7 +94,10 @@ export function SiteHeader() {
                         aria-label={item.to === ROUTES.home ? t(item.labelKey) : undefined}
                       >
                         {item.to === ROUTES.home ? (
-                          <Logo className="relative -top-[0.9px] text-[17px]" markClassName="!h-[1.3em] !w-[1.91em]" />
+                          <Logo
+                            className="relative -top-[0.9px] text-[17px]"
+                            markClassName="!h-[1.3em] !w-[1.91em]"
+                          />
                         ) : (
                           t(item.labelKey)
                         )}
